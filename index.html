@@ -1,0 +1,575 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Teacher Rush</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: HUD on top, order rail of tickets under it, the school campus map as the play field. */
+  --ink:#1B2A41; --paper:#FFFFFF; --sky:#D5EBFA; --grass:#C6E5AE; --path:#EFE6D0; --bus:#FFC21A;
+  --energy:#2EA66B; --warn:#F2A900; --crit:#E5383B; --tpi:#E0409B; --work:#3B82F6; --muted:#55657E;
+  --display:'Lilita One','Trebuchet MS',system-ui,sans-serif; --body:'Nunito',system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%}
+body{box-sizing:border-box;overflow:auto;background:var(--sky);color:var(--ink);font:700 15px/1.4 var(--body);padding-block:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+/* one fitted screen: the map takes whatever height the HUD and rail leave over */
+.app{height:100%;display:flex;flex-direction:column;gap:10px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font:400 clamp(28px,6vw,40px)/1 var(--display);margin:0;letter-spacing:.5px;text-shadow:0 3px 0 rgba(27,42,65,.15)}
+h1 span{color:#F0642F}
+.btns{display:flex;gap:8px}
+.ib{width:42px;height:42px;border:2.5px solid var(--ink);background:var(--paper);border-radius:12px;box-shadow:0 3px 0 var(--ink);cursor:pointer;display:grid;place-items:center;color:var(--ink);padding:0}
+.ib:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.ib svg{width:22px;height:22px}
+button:focus-visible,.st:focus-visible{outline:3px solid var(--work);outline-offset:2px}
+.hud{display:grid;grid-template-columns:.9fr 1.3fr 1.3fr .9fr;gap:10px}
+@media(max-width:640px){.hud{grid-template-columns:1fr 1fr}}
+.tile{background:var(--paper);border:2.5px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);padding:8px 12px 10px;min-width:0}
+.lbl{display:flex;align-items:center;gap:6px;font:800 11px/1 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.lbl svg{width:22px;height:22px;flex:none}
+.row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:4px}
+.big{font:400 28px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.big small{font:800 12px var(--body);color:var(--muted);margin-left:3px}
+.meter{height:14px;border:2.5px solid var(--ink);border-radius:99px;background:#E6EAF0;overflow:hidden;margin-top:6px;position:relative}
+.meter i{position:absolute;inset:0 auto 0 0;width:50%;border-radius:99px;background:var(--energy);transition:width .15s linear,background .2s}
+.meter i::after{content:"";position:absolute;left:6px;right:6px;top:2px;height:3px;border-radius:2px;background:rgba(255,255,255,.45)}
+.meter.low{animation:pulse .7s ease-in-out infinite}
+.chip{display:inline-block;font:400 13px var(--display);background:var(--bus);border:2px solid var(--ink);border-radius:99px;padding:1px 8px}
+.railwrap{background:rgba(255,255,255,.55);border:2.5px dashed rgba(27,42,65,.35);border-radius:14px;padding:8px 8px 4px}
+.rail{display:flex;gap:8px;overflow-x:auto;min-height:80px;padding:2px 2px 8px;align-items:stretch}
+.empty{align-self:center;color:var(--muted);font-weight:800;padding:0 6px}
+.tk{flex:0 0 156px;display:flex;flex-direction:column;border:2.5px solid var(--ink);border-radius:12px;background:var(--paper);overflow:hidden;cursor:pointer;text-align:left;padding:0;font:inherit;color:var(--ink);box-shadow:0 3px 0 var(--ink);animation:drop .3s ease-out}
+.tk.on{outline:3px solid var(--work);outline-offset:1px}
+.tk.crit{animation:shake .5s ease-in-out infinite}
+.tk.out{animation:out .45s ease-in forwards;pointer-events:none}
+.tk.bad{border-color:var(--crit)}
+.tk-h{display:flex;align-items:center;gap:6px;padding:4px 6px;background:var(--c);color:var(--on)}
+.tk-h svg{width:32px;height:32px;flex:none;padding:4px;box-sizing:border-box;background:rgba(255,255,255,.22);border-radius:9px}
+.tk-h b{font:400 14px/1.05 var(--display);min-width:0}
+.tk-b{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 8px 5px;flex:1}
+.tk-b small{font-size:11px;font-weight:800;color:var(--muted);line-height:1.15}
+.tk-time{font:400 19px var(--display);font-variant-numeric:tabular-nums}
+.tk-b small{font-size:10.5px}
+.tk-b{padding:3px 6px 3px}
+.bar{display:block;height:7px;background:#E6EAF0;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;width:100%;background:var(--energy)}
+.bar.w{height:5px}.bar.w i{width:0;background:var(--work)}
+.tk.warn .bar.t i{background:var(--warn)}.tk.crit .bar.t i{background:var(--crit)}
+.map{flex:1;min-height:260px;display:flex;background:var(--grass);border:2.5px solid var(--ink);border-radius:16px;box-shadow:0 5px 0 var(--ink);overflow:hidden}
+.map svg{display:block;flex:1;width:100%;height:100%;min-height:0;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.top,.hud,.railwrap,.status,.hint{flex:none}
+@media(max-height:780px){.hint{display:none}.tile{padding:6px 10px 8px}.big{font-size:24px}h1{font-size:28px}}
+.hint{display:none}
+.railwrap{padding:5px 6px 1px}
+.status{padding:4px 10px;font-size:15px;min-height:0}
+.empty{font-size:13px}
+.hint{margin:0;color:var(--muted);font-size:13px}
+.status{margin:0;background:var(--paper);border:2.5px solid var(--ink);border-radius:12px;box-shadow:0 3px 0 var(--ink);padding:8px 12px;font:400 17px var(--display);min-height:24px}
+.o{stroke:var(--ink);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.o2{stroke:var(--ink);stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.at{font-family:var(--display);fill:var(--ink)}
+.pl{font:400 17px var(--display)}
+.st{cursor:pointer;outline:none}
+.st .glow{fill:none;stroke:var(--bus);stroke-width:5;opacity:0}
+.st.has .glow{opacity:1}
+.st.crit .glow{stroke:var(--crit);animation:pulse .6s ease-in-out infinite}
+.st:hover .card{filter:brightness(1.05)}
+.st:focus-visible .glow{opacity:1;stroke:var(--work)}
+.pt{font:400 17px var(--display);fill:var(--ink);text-anchor:middle}
+.sg{font:400 24px var(--display);fill:#fff;text-anchor:middle}
+.fx{font:400 18px var(--display);paint-order:stroke;stroke:var(--ink);stroke-width:4px;stroke-linejoin:round;text-anchor:middle;pointer-events:none;animation:rise 1.2s ease-out forwards}
+.fx.good{fill:#fff}.fx.bad{fill:#FF8A8A}.fx.sip{fill:#FFE066}
+.tch{pointer-events:none}
+.tch .mouth-t,.tch .sweat{display:none}
+.tch.tired .mouth-t,.tch.tired .sweat{display:inline}
+.tch.tired .mouth-s{display:none}
+.leg{transform-box:fill-box;transform-origin:50% 0}
+.tch.walk .bob{animation:bob .32s ease-in-out infinite}
+.tch.walk .leg.l{animation:step .32s linear infinite}
+.tch.walk .leg.r{animation:step .32s linear infinite reverse}
+.arm{transform-box:fill-box;transform-origin:0 0}
+.tch.work .arm.r{animation:write .35s ease-in-out infinite}
+.tch.cheer .bob{animation:jump .5s ease-out}
+.ov{position:fixed;inset:0;display:grid;place-items:center;background:rgba(27,42,65,.6);z-index:20;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.panel{background:var(--paper);border:3px solid var(--ink);border-radius:18px;box-shadow:0 6px 0 var(--ink);max-width:460px;width:100%;padding:20px;max-height:100%;overflow:auto}
+.panel h2{font:400 36px/1 var(--display);margin:0 0 6px}
+.panel p{margin:0;color:var(--muted)}
+.rules{list-style:none;padding:0;margin:16px 0;display:grid;gap:10px}
+.rules li{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:center;min-width:0}
+.rb{width:34px;height:34px;border-radius:10px;border:2.5px solid var(--ink);display:grid;place-items:center;color:#fff}
+.rb svg{width:20px;height:20px}
+.go{width:100%;font:400 22px var(--display);padding:12px;border:3px solid var(--ink);border-radius:14px;background:var(--bus);color:var(--ink);box-shadow:0 5px 0 var(--ink);cursor:pointer;margin-top:8px}
+.go:active{transform:translateY(3px);box-shadow:0 2px 0 var(--ink)}
+.go.alt{background:var(--paper)}
+.stars{display:flex;gap:6px;margin:10px 0}
+.stars svg{width:44px;height:44px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.stats div{background:#EEF4FA;border-radius:10px;padding:8px 10px;min-width:0}
+.stats b{display:block;font:400 22px var(--display);font-variant-numeric:tabular-nums}
+.stats span{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@keyframes pulse{50%{opacity:.45}}
+@keyframes drop{from{transform:translateY(-14px);opacity:0}}
+@keyframes shake{25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+@keyframes out{to{transform:translateY(16px) scale(.9);opacity:0}}
+@keyframes rise{0%{opacity:0;transform:translateY(6px)}15%{opacity:1}100%{opacity:0;transform:translateY(-34px)}}
+@keyframes bob{50%{transform:translateY(-2.5px)}}
+@keyframes step{0%,100%{transform:rotate(-18deg)}50%{transform:rotate(18deg)}}
+@keyframes write{50%{transform:rotate(-14deg)}}
+@keyframes jump{40%{transform:translateY(-12px)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-gate" viewBox="0 0 32 32"><path d="M5 28V12a11 11 0 0 1 22 0v16" fill="none" stroke="currentColor" stroke-width="3"/><path d="M11 28V14M16 28V10M21 28V14" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
+<symbol id="i-flag" viewBox="0 0 32 32"><rect x="7" y="4" width="3" height="25" rx="1.5" fill="currentColor"/><path d="M10 6h16v12H10z" fill="currentColor"/></symbol>
+<symbol id="i-ball" viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="3"/><path d="M5 16h22M16 5v22" stroke="currentColor" stroke-width="2.5" fill="none"/></symbol>
+<symbol id="i-bus" viewBox="0 0 32 32"><rect x="3" y="7" width="26" height="16" rx="4" fill="currentColor"/><rect x="6" y="10" width="6" height="6" rx="1" fill="#fff"/><rect x="14" y="10" width="6" height="6" rx="1" fill="#fff"/><circle cx="10" cy="25" r="3.5" fill="currentColor"/><circle cx="22" cy="25" r="3.5" fill="currentColor"/></symbol>
+<symbol id="i-board" viewBox="0 0 32 32"><rect x="3" y="5" width="26" height="17" rx="2" fill="currentColor"/><path d="M8 11h10M8 16h16" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M10 28h12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></symbol>
+<symbol id="i-sheet" viewBox="0 0 32 32"><rect x="6" y="3" width="20" height="26" rx="3" fill="currentColor"/><path d="M11 12l3 3 6-6M11 22h10" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-monitor" viewBox="0 0 32 32"><rect x="3" y="5" width="26" height="17" rx="2.5" fill="currentColor"/><path d="M12 28h8M16 22v6" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M8 11l4 3-4 3M15 18h7" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-curtain" viewBox="0 0 32 32"><path d="M3 5h26v4H3zM5 9c0 8 2 14 3 19h6c-2-5-3-11-3-19zM27 9c0 8-2 14-3 19h-6c2-5 3-11 3-19z" fill="currentColor"/></symbol>
+<symbol id="i-laptop" viewBox="0 0 32 32"><rect x="6" y="7" width="20" height="14" rx="2" fill="currentColor"/><path d="M2 25h28" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M16 18v-7M12.5 14L16 10.5 19.5 14" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-cup" viewBox="0 0 32 32"><path d="M5 12h18v9a6 6 0 0 1-6 6h-6a6 6 0 0 1-6-6z" fill="currentColor"/><path d="M23 14h2a3 3 0 0 1 0 7h-2" fill="none" stroke="currentColor" stroke-width="3"/><path d="M11 3c-1 2 1 3 0 6M17 3c-1 2 1 3 0 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+<symbol id="i-chat" viewBox="0 0 32 32"><path d="M4 5h16a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-8l-6 5v-5H4a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3z" fill="currentColor"/><path d="M26 11h2a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3v4l-5-4h-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-exam" viewBox="0 0 32 32"><rect x="5" y="3" width="22" height="26" rx="3" fill="currentColor"/><path d="M10 10h12M10 15h12M10 20h6" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/><path d="M18 24l3 3 6-7" stroke="#FFE066" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-eye" viewBox="0 0 32 32"><path d="M1.5 16Q16 -1 30.5 16Q16 33 1.5 16z" fill="currentColor"/><circle cx="16" cy="16" r="6.5" fill="#fff"/><circle cx="16" cy="16" r="3" fill="currentColor"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 32 32"><path d="M18 2L6 18h8l-2 12 12-16h-8z" fill="currentColor"/></symbol>
+<symbol id="i-star" viewBox="0 0 32 32"><path d="M16 2l4.2 8.8 9.8 1.2-7.2 6.7 1.9 9.6L16 23.3l-8.7 5 1.9-9.6L2 12l9.8-1.2z" fill="currentColor"/></symbol>
+<symbol id="i-clock" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="3"/><path d="M16 9v7l5 3" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></symbol>
+<symbol id="i-trophy" viewBox="0 0 32 32"><path d="M9 5h14v8a7 7 0 0 1-14 0zM9 8H4q0 6 5 7M23 8h5q0 6-5 7M16 20v5M10 28h12" fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<main class="app">
+  <div class="top">
+    <h1>NIS Teacher <span>Rush</span></h1>
+    <div class="btns">
+      <button class="ib" id="btnFs" type="button" aria-label="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="ib" id="btnSnd" type="button" aria-label="Mute sound"></button>
+      <button class="ib" id="btnPause" type="button" aria-label="Pause"></button>
+    </div>
+  </div>
+  <section class="hud" aria-label="Status">
+    <div class="tile"><div class="lbl"><svg><use href="#i-clock"/></svg>NIS 7:20 – 3:00</div>
+      <div class="row"><span class="big"><span id="clock">7:20</span><small id="ampm">AM</small></span></div>
+      <div class="meter"><i id="dayFill" style="background:var(--work);width:0"></i></div></div>
+    <div class="tile"><div class="lbl" style="color:var(--energy)"><svg><use href="#i-bolt"/></svg>Energy</div>
+      <div class="row"><span class="big"><span id="enVal">100</span><small>/ 100</small></span></div>
+      <div class="meter" id="enMeter"><i id="enFill" style="width:100%"></i></div></div>
+    <div class="tile"><div class="lbl" style="color:var(--tpi)"><svg><use href="#i-star"/></svg>TPI motivation</div>
+      <div class="row"><span class="big"><span id="tpiVal">60</span><small>/ 100</small></span></div>
+      <div class="meter" id="tpiMeter"><i id="tpiFill" style="background:var(--tpi);width:60%"></i></div></div>
+    <div class="tile"><div class="lbl"><svg><use href="#i-trophy"/></svg>Score</div>
+      <div class="row"><span class="big" id="score">0</span><span class="chip" id="combo" hidden>x2</span></div>
+      <div class="lbl" style="margin-top:8px"><span id="doneTxt">0 of 17 done</span></div></div>
+  </section>
+  <section class="railwrap" aria-label="Task tickets"><div class="rail" id="rail"></div></section>
+  <div class="map"><svg id="map" viewBox="0 0 800 450" role="group" aria-label="School campus"></svg></div>
+  <p class="status" id="status">Tap a ticket or a glowing room.</p>
+  <p class="hint">Tap a ticket and the teacher finishes that task in one second. Each task costs some energy, so tap the Coffee Corner to refill it.</p>
+  <div class="vh" id="live" aria-live="polite"></div>
+</main>
+<div class="ov" id="ov" hidden><div class="panel" id="panel"></div></div>
+<script>
+const $=s=>document.querySelector(s);
+const STN={
+  gate:{x:100,y:75,name:'Main gate',col:'#F0642F',on:'#fff',ic:'gate'},
+  flag:{x:300,y:75,name:'Flag square',col:'#D32F4A',on:'#fff',ic:'flag'},
+  yard:{x:500,y:75,name:'Playground',col:'#8BB82E',on:'#1B2A41',ic:'ball'},
+  bus:{x:700,y:75,name:'Bus bay',col:'#E5A100',on:'#1B2A41',ic:'bus'},
+  class:{x:100,y:230,name:'Classroom',col:'#2E8B57',on:'#fff',ic:'board'},
+  meet:{x:300,y:230,name:'Meeting room',col:'#7A4FD6',on:'#fff',ic:'chat'},
+  lab:{x:500,y:230,name:'Update BLB',col:'#0E9AA7',on:'#fff',ic:'monitor'},
+  audi:{x:700,y:230,name:'Auditorium',col:'#2F4B9E',on:'#fff',ic:'curtain'},
+  marks:{x:100,y:385,name:'Marking desk',col:'#C2410C',on:'#fff',ic:'exam'},
+  blb:{x:300,y:385,name:'NITA courses',col:'#3B9AE8',on:'#1B2A41',ic:'laptop'},
+  coffee:{x:500,y:385,name:'Coffee corner',col:'#7B4B2A',on:'#fff',ic:'cup'},
+  peer:{x:700,y:385,name:'Peer visit',col:'#B5179E',on:'#fff',ic:'eye'}
+};
+/* cost = energy used when the task is done */
+const TASKS={
+  morning:{title:'Morning duty',sub:'Main gate',st:'gate',cost:6},
+  flag:{title:'Salute the flag',sub:'Flag square',st:'flag',cost:3},
+  class:{title:'Explain in class',sub:'Classroom',st:'class',cost:9},
+  blb:{title:'Update the BLB',sub:'Update BLB room',st:'lab',cost:6},
+  peer:{title:'Peer visit',sub:'Visiting a colleague',st:'peer',cost:6},
+  break:{title:'Break duty',sub:'Playground',st:'yard',cost:7},
+  correct:{title:'Exam correction',sub:'Marking desk',st:'marks',cost:10},
+  meet:{title:'Meeting with Ms. Nivine',sub:'Meeting room',st:'meet',cost:7},
+  lab:{title:'NITA course',sub:'NITA courses room',st:'blb',cost:8},
+  audi:{title:'Professional development',sub:'Auditorium',st:'audi',cost:11},
+  bus:{title:'After school duty',sub:'Bus bay',st:'bus',cost:6}
+};
+/* [task, appears at (minutes after 7:20), deadline window in minutes]. The day runs 7:20 to 3:00 pm. */
+const SCHED=[['morning',0,28],['flag',10,20],['class',40,40],['blb',70,90],['peer',95,50],['break',120,28],['correct',140,80],
+  ['meet',175,45],['class',190,40],['lab',235,60],['break',265,28],['audi',280,60],['class',300,40],['blb',320,60],
+  ['peer',335,45],['correct',350,55],['bus',420,35]];
+const DAY_START=440; /* 7:20 in minutes since midnight */
+const DAY_END=460;   /* minutes of school day, 7:20 to 3:00 pm */
+const WORK_SECONDS=1; /* every task takes one second once tapped */
+const ART={
+gate:`<rect width="150" height="110" fill="#FFE6D6"/><rect y="84" width="150" height="26" fill="#B9DB95"/>
+<rect x="16" y="30" width="16" height="62" class="o" fill="#CDBA9B"/><rect x="104" y="30" width="16" height="62" class="o" fill="#CDBA9B"/>
+<path d="M40 44v46M52 44v46M64 44v46M76 44v46M88 44v46" class="o" fill="none" stroke-width="3"/>
+<rect x="12" y="20" width="112" height="16" rx="5" class="o" fill="#FFC21A"/><text x="68" y="32" text-anchor="middle" class="at" font-size="13">NIS</text>
+<path d="M9 104l-6-18h12z" class="o" fill="#F0642F"/>`,
+flag:`<rect width="150" height="110" fill="#DCE6FF"/><rect y="86" width="150" height="24" fill="#B9DB95"/>
+<rect x="24" y="12" width="5" height="82" class="o" fill="#8A97A8"/><circle cx="26.5" cy="11" r="4.5" class="o" fill="#FFC21A"/>
+<g transform="translate(29 16)"><rect width="60" height="12" fill="#CE1126"/><rect y="12" width="60" height="12" fill="#fff"/><rect y="24" width="60" height="12" fill="#1B1B1B"/><circle cx="30" cy="18" r="4.5" fill="#C8A227"/><rect width="60" height="36" fill="none" class="o"/></g>
+<g class="o2"><circle cx="50" cy="76" r="5.5" fill="#E6B089"/><rect x="44" y="82" width="12" height="16" rx="4" fill="#3B82F6"/><circle cx="68" cy="76" r="5.5" fill="#E6B089"/><rect x="62" y="82" width="12" height="16" rx="4" fill="#F0642F"/><circle cx="86" cy="76" r="5.5" fill="#E6B089"/><rect x="80" y="82" width="12" height="16" rx="4" fill="#2E8B57"/></g>`,
+yard:`<rect width="150" height="110" fill="#E6F4CC"/><rect y="68" width="150" height="42" fill="#E8A36A"/><path d="M0 68h150" stroke="#fff" stroke-width="3" opacity=".8"/>
+<rect x="18" y="16" width="5" height="62" class="o" fill="#8A97A8"/><rect x="23" y="12" width="30" height="22" rx="2" class="o" fill="#fff"/><rect x="31" y="22" width="14" height="9" fill="none" stroke="#E5383B" stroke-width="2"/>
+<path d="M30 40h16" stroke="#F58220" stroke-width="3.5" stroke-linecap="round"/><path d="M32 42l3 8M38 42v9M44 42l-3 8" stroke="#fff" stroke-width="1.5"/>
+<circle cx="72" cy="88" r="11" class="o" fill="#F58220"/><path d="M61 88h22M72 77v22M64 80q8 8 0 16M80 80q-8 8 0 16" class="o2" fill="none"/>
+<path d="M96 102l-6-16h12z" class="o" fill="#FFC21A"/>`,
+bus:`<rect width="150" height="110" fill="#FFF0BF"/><rect y="84" width="150" height="26" fill="#6B7686"/><path d="M8 98h18M42 98h18M76 98h18M110 98h18" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+<rect x="10" y="34" width="108" height="48" rx="11" class="o" fill="#FFC21A"/>
+<rect x="18" y="42" width="18" height="16" rx="3" class="o2" fill="#BFE4FA"/><rect x="40" y="42" width="18" height="16" rx="3" class="o2" fill="#BFE4FA"/><rect x="62" y="42" width="18" height="16" rx="3" class="o2" fill="#BFE4FA"/><rect x="86" y="42" width="16" height="34" rx="3" class="o2" fill="#BFE4FA"/>
+<path d="M10 68h76" class="o2" fill="none"/><text x="46" y="79" text-anchor="middle" class="at" font-size="9">BUS</text>
+<circle cx="34" cy="84" r="9" class="o" fill="#2B3A55"/><circle cx="34" cy="84" r="3" fill="#CFD6E0"/><circle cx="92" cy="84" r="9" class="o" fill="#2B3A55"/><circle cx="92" cy="84" r="3" fill="#CFD6E0"/>`,
+class:`<rect width="150" height="110" fill="#D9F0E3"/><rect y="82" width="150" height="28" fill="#E3C79C"/>
+<rect x="10" y="10" width="96" height="54" rx="4" class="o" fill="#24604E"/><rect x="10" y="60" width="96" height="6" class="o" fill="#B88A4A"/>
+<text x="58" y="42" text-anchor="middle" class="at" style="fill:#fff" font-size="20">F = ma</text><path d="M24 53h34" stroke="#CFE9DC" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="12" y="78" width="34" height="12" rx="3" class="o" fill="#C98F52"/><rect x="56" y="78" width="34" height="12" rx="3" class="o" fill="#C98F52"/>
+<circle cx="29" cy="74" r="5" class="o2" fill="#E5383B"/><path d="M29 69q2-4 5-4" class="o2" fill="none"/>`,
+meet:`<rect width="150" height="110" fill="#E9E0FF"/><rect y="86" width="150" height="24" fill="#D5C8F2"/>
+<path d="M64 66q0-18 20-18t20 18z" class="o" fill="#E0409B"/><circle cx="84" cy="38" r="11" class="o" fill="#E3A877"/><path d="M73 36c0-14 22-14 22 0c-5-5-17-5-22 0z" fill="#3B2A24"/><circle cx="84" cy="23" r="5" fill="#3B2A24" class="o2"/>
+<rect x="8" y="64" width="104" height="26" rx="8" class="o" fill="#A7753F"/>
+<g transform="rotate(-6 30 56)"><rect x="16" y="44" width="28" height="22" rx="2" class="o2" fill="#fff"/><path d="M21 52l4 4 8-9" stroke="#E5383B" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M21 61h16" stroke="#8A97A8" stroke-width="2"/></g>
+<rect x="44" y="50" width="26" height="16" rx="2" class="o2" fill="#fff" transform="rotate(5 57 58)"/>
+<rect x="98" y="4" width="46" height="22" rx="7" class="o2" fill="#fff"/><path d="M104 26l-5 7 11-7" class="o2" fill="#fff"/><text x="121" y="19" text-anchor="middle" class="at" font-size="9">Marks?</text>`,
+lab:`<rect width="150" height="110" fill="#D4F2F4"/><rect y="86" width="150" height="24" fill="#BFD6DC"/>
+<rect x="6" y="72" width="120" height="10" rx="3" class="o" fill="#8D9BB0"/>
+<rect x="12" y="20" width="50" height="38" rx="5" class="o" fill="#1B2A41"/><rect x="16" y="24" width="42" height="30" rx="2" fill="#0E9AA7"/><path d="M21 33h20M21 40h30M21 47h14" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><path d="M37 58v14M27 72h20" class="o" fill="none"/>
+<rect x="68" y="20" width="50" height="38" rx="5" class="o" fill="#1B2A41"/><rect x="72" y="24" width="42" height="30" rx="2" fill="#2B3A55"/><text x="93" y="37" text-anchor="middle" class="at" style="fill:#fff" font-size="14">BLB</text><rect x="76" y="43" width="34" height="6" rx="3" fill="#fff"/><rect x="76" y="43" width="20" height="6" rx="3" fill="#3DDC84"/><path d="M93 58v14M83 72h20" class="o" fill="none"/>`,
+audi:`<rect width="150" height="110" fill="#E4E8FA"/><rect y="60" width="150" height="50" fill="#B9794A"/><path d="M0 60h150" class="o2" fill="none"/>
+<rect x="38" y="14" width="74" height="40" rx="3" class="o" fill="#fff"/><text x="75" y="42" text-anchor="middle" class="at" font-size="22">PD</text>
+<path d="M0 0h34c0 24-8 42-14 60H0z" class="o" fill="#8C2F39"/><path d="M150 0h-34c0 24 8 42 14 60h20z" class="o" fill="#8C2F39"/><rect width="150" height="9" class="o" fill="#6E1F2B"/>
+<g class="o2" fill="#2F4B9E"><rect x="8" y="88" width="18" height="16" rx="6"/><rect x="30" y="88" width="18" height="16" rx="6"/><rect x="52" y="88" width="18" height="16" rx="6"/><rect x="74" y="88" width="18" height="16" rx="6"/></g>`,
+blb:`<rect width="150" height="110" fill="#DCEEFF"/><rect y="80" width="150" height="30" fill="#C98F52"/><path d="M0 80h150" class="o2" fill="none"/>
+<rect x="14" y="14" width="76" height="48" rx="5" class="o" fill="#1B2A41"/><rect x="19" y="19" width="66" height="38" rx="2" fill="#3B9AE8"/>
+<text x="52" y="44" text-anchor="middle" class="at" style="fill:#fff" font-size="16">NITA</text><rect x="28" y="49" width="48" height="4" rx="2" fill="#fff" opacity=".45"/><rect x="28" y="49" width="30" height="4" rx="2" fill="#fff"/>
+<path d="M6 64h92l6 10H0z" class="o" fill="#CFD6E0"/>
+<g transform="rotate(6 110 72)"><rect x="100" y="62" width="20" height="20" class="o2" fill="#FFE066"/><path d="M104 69h12M104 74h8" stroke="#8A6D00" stroke-width="1.6"/></g>`,
+peer:`<rect width="150" height="110" fill="#F6E0F7"/><rect y="84" width="150" height="26" fill="#E3C79C"/>
+<rect x="10" y="10" width="70" height="40" rx="3" class="o2" fill="#24604E"/><path d="M18 22h30M18 30h22" stroke="#CFE9DC" stroke-width="2.5" stroke-linecap="round"/>
+<g class="o2"><circle cx="38" cy="62" r="7" fill="#E6B089"/><rect x="29" y="69" width="18" height="20" rx="6" fill="#3B82F6"/></g>
+<g class="o2"><circle cx="100" cy="56" r="8" fill="#E6B089"/><path d="M92 54c0-10 16-10 16 0c-4-3-12-3-16 0z" fill="#2A1E1A"/><rect x="90" y="64" width="20" height="24" rx="7" fill="#B5179E"/></g>
+<g transform="rotate(8 118 79)"><rect x="108" y="66" width="20" height="26" rx="2" class="o2" fill="#C98F52"/><rect x="111" y="70" width="14" height="19" fill="#fff"/><path d="M114 76h8M114 81h8" stroke="#8A97A8" stroke-width="1.6"/></g>
+<circle cx="122" cy="26" r="15" class="o" fill="#fff"/><path d="M108 26q14-14 28 0q-14 14-28 0z" fill="#F6E0F7" class="o2"/><circle cx="122" cy="26" r="5" fill="#B5179E"/><circle cx="122" cy="26" r="2" fill="#1B2A41"/>`,
+marks:`<rect width="150" height="110" fill="#FFE8D6"/><rect y="82" width="150" height="28" fill="#C98F52"/><path d="M0 82h150" class="o2" fill="none"/>
+<rect x="12" y="44" width="46" height="38" rx="3" class="o2" fill="#fff" transform="rotate(-6 35 63)"/>
+<rect x="28" y="30" width="48" height="50" rx="3" class="o" fill="#fff"/><path d="M35 42h28M35 50h32M35 58h20" stroke="#8A97A8" stroke-width="2.5" stroke-linecap="round"/>
+<text x="58" y="76" text-anchor="middle" class="at" style="fill:#E5383B" font-size="20" transform="rotate(-10 58 70)">A+</text>
+<g transform="rotate(28 96 46)"><rect x="92" y="18" width="9" height="46" class="o2" fill="#FFC21A"/><path d="M92 64h9l-4.5 10z" class="o2" fill="#F2D3A8"/><rect x="92" y="13" width="9" height="7" class="o2" fill="#E0409B"/></g>`,
+coffee:`<rect width="150" height="110" fill="#F4E3D2"/><rect y="82" width="150" height="28" fill="#7B4B2A"/><path d="M0 82h150" class="o2" fill="none"/>
+<rect x="16" y="12" width="60" height="66" rx="9" class="o" fill="#5D6B82"/><rect x="24" y="20" width="44" height="14" rx="3" class="o2" fill="#3DDC84"/><text x="46" y="31" text-anchor="middle" class="at" font-size="9">READY</text>
+<circle cx="34" cy="44" r="4" class="o2" fill="#FFC21A"/><circle cx="48" cy="44" r="4" class="o2" fill="#E5383B"/><rect x="38" y="50" width="16" height="6" rx="2" class="o2" fill="#1B2A41"/>
+<path d="M32 62h28l-3 18H35z" class="o" fill="#fff"/><path d="M40 58q-3-5 0-8M52 58q-3-5 0-8" stroke="#B9A99A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+<path d="M88 62h22v12a6 6 0 0 1-6 6h-10a6 6 0 0 1-6-6z" class="o" fill="#fff"/>`
+};
+
+/* ---- build the map ---- */
+const TEACHER=`<g id="tch" class="tch"><ellipse cx="0" cy="0" rx="17" ry="5" fill="rgba(27,42,65,.22)"/>
+<g id="flip"><g class="bob">
+<g class="leg l"><rect x="-10" y="-24" width="8" height="22" rx="3" fill="#2B3A55"/><ellipse cx="-7" cy="-1" rx="7" ry="3.5" fill="#1B2A41"/></g>
+<g class="leg r"><rect x="2" y="-24" width="8" height="22" rx="3" fill="#2B3A55"/><ellipse cx="7" cy="-1" rx="7" ry="3.5" fill="#1B2A41"/></g>
+<rect x="-15" y="-52" width="30" height="32" rx="9" fill="#8CC7F0" class="o"/>
+<path d="M0 -48l-3 5 3 14 3-14z" fill="#D32F4A"/>
+<path d="M-7 -52L0 -34 7 -52" fill="none" stroke="#FFC21A" stroke-width="2"/><rect x="-4" y="-36" width="8" height="10" rx="1.5" fill="#fff" class="o2"/>
+<path class="arm l" d="M-14 -46q-8 10-4 22" stroke="#E6B089" stroke-width="6" fill="none" stroke-linecap="round"/>
+<circle cx="0" cy="-64" r="14" fill="#E6B089" class="o"/>
+<path d="M-14 -66C-16 -84 16 -84 14 -66C8 -74 -8 -74 -14 -66Z" fill="#2A1E1A"/>
+<circle cx="-5.5" cy="-64" r="4.5" fill="rgba(255,255,255,.5)" class="o2"/><circle cx="5.5" cy="-64" r="4.5" fill="rgba(255,255,255,.5)" class="o2"/><path d="M-1 -64h2" class="o2" fill="none"/>
+<circle cx="-5.5" cy="-64" r="1.4" fill="#1B2A41"/><circle cx="5.5" cy="-64" r="1.4" fill="#1B2A41"/>
+<path class="mouth-s" d="M-4 -57q4 4 8 0" class="o2" stroke="#1B2A41" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<path class="mouth-t" d="M-4 -55q4-3 8 0" stroke="#1B2A41" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+<path class="sweat" d="M14 -72q-3 5 0 7q3-2 0-7z" fill="#6EC6FF" stroke="#1B2A41" stroke-width="1.2"/>
+<g class="arm r"><path d="M14 -46q8 6 10 14" stroke="#E6B089" stroke-width="6" fill="none" stroke-linecap="round"/><rect x="18" y="-42" width="14" height="18" rx="2" fill="#C98F52" class="o2"/><rect x="20.5" y="-39" width="9" height="13" fill="#fff"/><path d="M22 -35h5M22 -31h5" stroke="#8A97A8" stroke-width="1.5"/></g>
+</g></g>
+<g id="tm" style="display:none"><rect x="-22" y="-92" width="44" height="9" rx="4.5" fill="#fff" class="o2"/><rect id="tmf" x="-20" y="-90" width="0" height="5" rx="2.5" fill="#3B82F6"/></g></g>`;
+
+function buildMap(){
+  let h=`<defs><clipPath id="cc"><rect width="150" height="110" rx="14"/></clipPath></defs><rect width="800" height="450" fill="#C6E5AE"/>`;
+  h+=`<g stroke="#EFE6D0" stroke-linecap="round" fill="none"><path d="M200 8V442M400 8V442M600 8V442" stroke-width="30"/><path d="M20 148H780M20 303H780" stroke-width="22"/></g>`;
+  for(const [id,s] of Object.entries(STN)){
+    h+=`<g class="st" id="st-${id}" data-st="${id}" tabindex="0" role="button" aria-label="Walk to ${s.name}" transform="translate(${s.x-75} ${s.y-55})">
+<rect x="3" y="5" width="150" height="110" rx="14" fill="rgba(27,42,65,.2)"/><g class="card" clip-path="url(#cc)">${ART[id]}</g>
+<rect width="150" height="110" rx="14" fill="none" stroke="#1B2A41" stroke-width="3"/><rect class="glow" x="-4" y="-4" width="158" height="118" rx="18"/>
+<g transform="translate(75 -11)"><rect x="-70" y="-14" width="140" height="28" rx="14" fill="${s.col}" class="o"/><text y="6" text-anchor="middle" class="pl" fill="${s.on}">${s.name}</text></g>
+<rect x="-6" y="-26" width="162" height="142" fill="#000" fill-opacity="0" style="pointer-events:all"/></g>`;
+  }
+  for(const [id,s] of Object.entries(STN)){
+    h+=`<g id="pin-${id}" transform="translate(${s.x+62} ${s.y-48})" style="display:none;pointer-events:none"><circle r="23" fill="#fff" class="o"/><circle id="pr-${id}" r="16" fill="none" stroke="#2EA66B" stroke-width="6" stroke-linecap="round" transform="rotate(-90)" stroke-dasharray="100.53" stroke-dashoffset="0"/><text id="pt-${id}" y="6" class="pt">0</text></g>`;
+  }
+  h+=TEACHER+`<g id="fx"></g>`;
+  $('#map').innerHTML=h;
+}
+/* ---- state ---- */
+let G=null,P=null,raf=0,last=0,muted=false,best=0,ac=null;
+try{best=+localStorage.getItem('teacherRushBest')||0}catch(e){}
+const tkEls={};
+const ICON_SND='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11"/></svg>';
+const ICON_MUTE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+const ICON_PAUSE='<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.5"/></svg>';
+const ICON_PLAY='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l12-7.5z"/></svg>';
+
+/* ---- sound ---- */
+function tone(f,d,type,v,delay){
+  if(muted)return;
+  try{
+    ac=ac||new(window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==='suspended')ac.resume();
+    const t=ac.currentTime+(delay||0),o=ac.createOscillator(),g=ac.createGain();
+    o.type=type||'sine';o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(v||.05,t);
+    g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+d+.02);
+  }catch(e){}
+}
+const sfx={
+  ping(){tone(880,.12,'triangle',.05)},
+  done(){tone(660,.1,'sine',.06);tone(990,.16,'sine',.06,.09)},
+  miss(){tone(220,.3,'sawtooth',.04)},
+  sip(){tone(500,.08,'sine',.04)},
+  win(){[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.06,i*.12))},
+  lose(){[330,262,196].forEach((f,i)=>tone(f,.25,'sawtooth',.04,i*.18))}
+};
+
+/* ---- helpers ---- */
+function say(t){$('#live').textContent=t}
+function floatTxt(x,y,txt,cls){
+  const e=document.createElementNS('http://www.w3.org/2000/svg','text');
+  e.setAttribute('x',x);e.setAttribute('y',y);e.setAttribute('class','fx '+cls);e.textContent=txt;
+  e.addEventListener('animationend',()=>e.remove());$('#fx').appendChild(e);
+}
+const fmt=n=>Math.round(n).toLocaleString('en-US');
+
+/* ---- game flow ---- */
+function start(day){
+  const scale=Math.max(.7,1-.08*(day-1));
+  G={day,t:0,mps:6+.6*(day-1),energy:100,tpi:60,score:0,combo:0,bestCombo:0,done:0,missed:0,paused:false,over:false,
+    tickets:SCHED.map((s,i)=>({id:i,k:s[0],at:s[1],win:Math.round(s[2]*scale),due:s[1]+Math.round(s[2]*scale),work:WORK_SECONDS,prog:0,status:'wait'}))};
+  P={x:400,y:385,tx:400,ty:385,mode:'idle',moving:false,at:null,cur:null,drink:0,dir:1,cheer:0};
+  for(const k in tkEls){tkEls[k].remove();delete tkEls[k]}
+  $('#fx').innerHTML='';
+  $('#btnPause').innerHTML=ICON_PAUSE;
+  $('#ov').hidden=true;last=0;
+  cancelAnimationFrame(raf);raf=requestAnimationFrame(frame);
+  render();say('Day '+day+' begins. Morning duty is up.');
+}
+function go(id){
+  if(!G||G.over||G.paused)return;
+  const s=STN[id];
+  if(id==='coffee'){
+    if(P.mode!=='drink'){P.mode='drink';P.cur=null;P.drink=0;sfx.sip()}
+    P.at=id;P.tx=s.x+44;P.ty=s.y+50;return;
+  }
+  const tk=nextAt(id);
+  if(!tk){floatTxt(s.x,s.y-40,'No task here yet','sip');return}
+  startTask(tk);
+}
+function startTask(tk){
+  if(!G||G.over||G.paused||tk.status!=='active')return;
+  const st=TASKS[tk.k].st,s=STN[st];
+  if(P.cur!==tk)sfx.sip();
+  P.mode='work';P.cur=tk;P.at=st;P.tx=s.x+44;P.ty=s.y+50;
+}
+function nextAt(st){
+  let b=null;
+  for(const tk of G.tickets)if(tk.status==='active'&&TASKS[tk.k].st===st&&(!b||tk.due<b.due))b=tk;
+  return b;
+}
+function complete(tk){
+  const S=STN[TASKS[tk.k].st],frac=Math.max(0,(tk.due-G.t)/tk.win);
+  tk.status='done';G.done++;G.combo++;G.bestCombo=Math.max(G.bestCombo,G.combo);
+  const gain=4+Math.round(frac*4)+Math.min(G.combo-1,3);
+  G.tpi=Math.min(100,G.tpi+gain);
+  const pts=100+Math.round(frac*100)+G.combo*10;G.score+=pts;
+  const cost=TASKS[tk.k].cost;G.energy=Math.max(0,G.energy-cost);
+  floatTxt(S.x,S.y-60,'+'+gain+' TPI','good');floatTxt(S.x,S.y-36,'+'+pts,'good');floatTxt(S.x,S.y-12,'-'+cost+' energy','sip');
+  leave(tk,'');sfx.done();P.mode='idle';P.cur=null;P.cheer=.5;
+  say(TASKS[tk.k].title+' done on time.');
+}
+function miss(tk){
+  const S=STN[TASKS[tk.k].st];
+  tk.status='missed';G.missed++;G.combo=0;G.tpi=Math.max(0,G.tpi-12);
+  floatTxt(S.x,S.y-50,'-12 TPI','bad');leave(tk,'bad');sfx.miss();
+  if(P.cur===tk){P.mode='idle';P.cur=null}
+  say('Missed: '+TASKS[tk.k].title+'.');
+}
+function leave(tk,cls){
+  const el=tkEls[tk.id];if(!el)return;
+  delete tkEls[tk.id];el.classList.add('out');if(cls)el.classList.add(cls);
+  setTimeout(()=>el.remove(),460);
+}
+
+function update(dt){
+  G.t+=dt*G.mps;
+  for(const tk of G.tickets){
+    if(tk.status==='wait'&&G.t>=tk.at){tk.status='active';sfx.ping();say('New task: '+TASKS[tk.k].title)}
+    if(tk.status==='active'&&G.t>=tk.due)miss(tk);
+  }
+  let drain=.2;
+  {
+    const dx=P.tx-P.x,dy=P.ty-P.y,d=Math.hypot(dx,dy),step=480*dt;
+    P.moving=d>1;
+    if(P.moving){
+      if(Math.abs(dx)>1)P.dir=dx>0?1:-1;
+      if(d<=step){P.x=P.tx;P.y=P.ty}else{P.x+=dx/d*step;P.y+=dy/d*step}
+    }
+  }
+  if(P.mode==='work'){
+    const tk=P.cur;
+    if(!tk||tk.status!=='active'){P.mode='idle';P.cur=null}
+    else{tk.prog+=dt;if(tk.prog>=tk.work)complete(tk)}
+  }
+  if(P.mode==='drink'){
+    P.drink+=dt;G.energy=Math.min(100,G.energy+40*dt/1.5);drain=0;
+    if(P.drink>=1.5){P.mode='idle';G.tpi=Math.min(100,G.tpi+1.5)}
+  }
+  G.energy=Math.max(0,G.energy-drain*dt);
+  if(G.energy<22)G.tpi=Math.max(0,G.tpi-.3*dt);
+  if(P.cheer>0)P.cheer-=dt;
+  if(G.tpi<=0)return end('burnout');
+  if(G.t>=DAY_END)return end('done');
+}
+
+/* ---- rendering ---- */
+function mkTicket(tk){
+  const T=TASKS[tk.k],S=STN[T.st],b=document.createElement('button');
+  b.type='button';b.className='tk';b.style.setProperty('--c',S.col);b.style.setProperty('--on',S.on);
+  b.innerHTML=`<span class="tk-h"><svg viewBox="0 0 32 32" aria-hidden="true"><use href="#i-${S.ic}"/></svg><b>${T.title}</b></span><span class="tk-b"><small>${T.sub}</small><span class="tk-time">0s</span></span><span class="bar t"><i></i></span><span class="bar w"><i></i></span>`;
+  b.addEventListener('pointerdown',()=>startTask(tk));
+  b.addEventListener('click',()=>startTask(tk));
+  return b;
+}
+function render(){
+  if(!G)return;
+  const tch=$('#tch');
+  tch.setAttribute('transform',`translate(${P.x.toFixed(1)} ${P.y.toFixed(1)})`);
+  $('#flip').setAttribute('transform',`scale(${P.dir*.9} .9)`);
+  tch.setAttribute('class','tch'+(P.moving?' walk':'')+(P.mode==='work'?' work':'')+(G.energy<25?' tired':'')+(P.cheer>0?' cheer':''));
+  const tm=$('#tm'),showM=P.mode==='work'||P.mode==='drink';
+  tm.style.display=showM?'':'none';
+  if(showM){
+    const fr=P.mode==='work'?P.cur.prog/P.cur.work:P.drink/2.4;
+    $('#tmf').setAttribute('width',Math.min(1,fr)*40);
+    $('#tmf').setAttribute('fill',P.mode==='work'?'#3B82F6':'#8B5E3C');
+  }
+  let st='Tap a ticket to start that task.';
+  if(P.mode==='work')st='Working: '+TASKS[P.cur.k].title+' ('+Math.round(Math.min(1,P.cur.prog/P.cur.work)*100)+'%)';
+  else if(P.mode==='drink')st='Drinking coffee...';
+  const sEl=$('#status');if(sEl.textContent!==st)sEl.textContent=st;
+  /* stations */
+  const act=G.tickets.filter(t=>t.status==='active');
+  for(const id in STN){
+    const list=act.filter(t=>TASKS[t.k].st===id),g=$('#st-'+id),pin=$('#pin-'+id);
+    g.classList.toggle('has',list.length>0);
+    if(!list.length){g.classList.remove('crit');pin.style.display='none';continue}
+    const u=list.reduce((a,b)=>a.due<b.due?a:b),fr=Math.max(0,(u.due-G.t)/u.win);
+    g.classList.toggle('crit',fr<.25);pin.style.display='';
+    const r=$('#pr-'+id);
+    r.setAttribute('stroke-dashoffset',(100.53*(1-fr)).toFixed(1));
+    r.setAttribute('stroke',fr>.5?'#2EA66B':fr>.25?'#F2A900':'#E5383B');
+    $('#pt-'+id).textContent=Math.ceil((u.due-G.t)/G.mps);
+  }
+  /* tickets */
+  const rail=$('#rail');
+  for(const tk of act){
+    let el=tkEls[tk.id];
+    if(!el){el=tkEls[tk.id]=mkTicket(tk);rail.appendChild(el)}
+    const fr=Math.max(0,(tk.due-G.t)/tk.win);
+    el.classList.toggle('warn',fr<=.5&&fr>.25);el.classList.toggle('crit',fr<=.25);
+    el.classList.toggle('on',P.cur===tk&&P.mode==='work');
+    el.querySelector('.tk-time').textContent=Math.ceil((tk.due-G.t)/G.mps)+'s';
+    el.querySelector('.bar.t i').style.width=(fr*100)+'%';
+    el.querySelector('.bar.w i').style.width=Math.min(100,tk.prog/tk.work*100)+'%';
+  }
+  let em=rail.querySelector('.empty');
+  if(!act.length&&!rail.querySelector('.tk')){
+    if(!em){em=document.createElement('div');em.className='empty';rail.appendChild(em)}
+    const nx=G.tickets.find(t=>t.status==='wait');
+    em.textContent=nx?'No tasks right now. Grab a coffee before the next bell.':'All tasks handled.';
+  }else if(em&&act.length)em.remove();
+  /* HUD */
+  const mins=DAY_START+G.t,h=Math.floor(mins/60),m=Math.floor(mins%60),h12=((h+11)%12)+1;
+  $('#clock').textContent=h12+':'+String(m).padStart(2,'0');$('#ampm').textContent=h<12?'AM':'PM';
+  $('#dayFill').style.width=Math.min(100,G.t/DAY_END*100)+'%';
+  const en=Math.round(G.energy);$('#enVal').textContent=en;
+  const ef=$('#enFill');ef.style.width=en+'%';ef.style.background=en>50?'var(--energy)':en>25?'var(--warn)':'var(--crit)';
+  $('#enMeter').classList.toggle('low',en<25);
+  const tp=Math.round(G.tpi);$('#tpiVal').textContent=tp;$('#tpiFill').style.width=tp+'%';$('#tpiMeter').classList.toggle('low',tp<25);
+  $('#score').textContent=fmt(G.score);
+  const cb=$('#combo');cb.hidden=G.combo<2;cb.textContent='x'+G.combo+' streak';
+  $('#doneTxt').textContent=G.done+' of '+G.tickets.length+' done';
+}
+function frame(ts){
+  raf=requestAnimationFrame(frame);
+  if(!G||G.over)return;
+  if(!last)last=ts;
+  const dt=Math.min(.05,(ts-last)/1000);last=ts;
+  if(G.paused)return;
+  update(dt);render();
+}
+
+/* ---- overlays ---- */
+function showOv(html){$('#panel').innerHTML=html;$('#ov').hidden=false}
+const STAR=on=>`<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2l4.2 8.8 9.8 1.2-7.2 6.7 1.9 9.6L16 23.3l-8.7 5 1.9-9.6L2 12l9.8-1.2z" fill="${on?'#FFC21A':'#E6EAF0'}" stroke="#1B2A41" stroke-width="2" stroke-linejoin="round"/></svg>`;
+function introHtml(){
+  const li=(c,ic,t)=>`<li><span class="rb" style="background:${c}"><svg viewBox="0 0 32 32"><use href="#i-${ic}"/></svg></span><span>${t}</span></li>`;
+  return `<h2>NIS Teacher Rush</h2><p>Run a school day at NIS from 7:20 AM to 3:00 PM. Every task has a deadline.</p><ul class="rules">
+${li('#3B82F6','gate','Tap a ticket and the teacher finishes that task in one second.')}
+${li('#2EA66B','bolt','Each finished task costs energy. Tap the Coffee Corner to refill it.')}
+${li('#E0409B','star','On-time tasks raise your TPI motivation. A missed task costs 12. At zero you burn out.')}</ul>
+<button class="go" type="button" data-act="start">Start the day</button>${best?`<p style="text-align:center;margin-top:10px">Best score: ${fmt(best)}</p>`:''}`;
+}
+function end(kind){
+  G.over=true;
+  let stars=0;
+  if(kind==='done')stars=(G.tpi>=70&&G.missed<=1)?3:(G.tpi>=40&&G.missed<=4)?2:1;
+  const nb=G.score>best;if(nb){best=G.score;try{localStorage.setItem('teacherRushBest',best)}catch(e){}}
+  kind==='done'?sfx.win():sfx.lose();
+  const title=kind==='done'?'School is out!':'Burnout!';
+  const msg=kind==='done'?(stars===3?'A flawless day. The students barely noticed the rush.':stars===2?'A solid day with a few things slipping.':'You survived the day. Tomorrow will be better.'):'Your motivation hit zero before the final bell.';
+  showOv(`<h2>${title}</h2><p>${msg}</p><div class="stars" role="img" aria-label="${stars} of 3 stars">${STAR(stars>0)}${STAR(stars>1)}${STAR(stars>2)}</div>
+<div class="stats"><div><b>${G.done} / ${G.tickets.length}</b><span>On time</span></div><div><b>${G.missed}</b><span>Missed</span></div><div><b>${Math.round(G.tpi)}</b><span>Final TPI</span></div><div><b>x${G.bestCombo}</b><span>Best streak</span></div><div style="grid-column:1/-1"><b>${fmt(G.score)}</b><span>Score${nb?' · new best':''}</span></div></div>
+${kind==='done'?'<button class="go" type="button" data-act="next">Next day (faster)</button><button class="go alt" type="button" data-act="retry">Replay this day</button>':'<button class="go" type="button" data-act="retry">Try again</button>'}`);
+}
+function setPause(p){
+  if(!G||G.over)return;
+  G.paused=p;$('#btnPause').innerHTML=p?ICON_PLAY:ICON_PAUSE;$('#btnPause').setAttribute('aria-label',p?'Resume':'Pause');
+  if(p)showOv('<h2>Paused</h2><p>The bell waits for no one, but this one will.</p><button class="go" type="button" data-act="resume">Resume</button>');
+  else{$('#ov').hidden=true;last=0}
+}
+
+/* ---- wiring ---- */
+buildMap();
+$('#btnSnd').innerHTML=ICON_SND;
+$('#btnSnd').addEventListener('click',()=>{muted=!muted;$('#btnSnd').innerHTML=muted?ICON_MUTE:ICON_SND;$('#btnSnd').setAttribute('aria-label',muted?'Unmute sound':'Mute sound')});
+$('#btnFs').addEventListener('click',()=>{
+  try{
+    if(document.fullscreenElement)document.exitFullscreen();
+    else{const r=document.documentElement.requestFullscreen();if(r&&r.catch)r.catch(()=>{})}
+  }catch(e){}
+});
+$('#btnPause').innerHTML=ICON_PAUSE;
+$('#btnPause').addEventListener('click',()=>setPause(!(G&&G.paused)));
+$('#map').addEventListener('pointerdown',e=>{const s=e.target.closest('.st');if(s){e.preventDefault();go(s.dataset.st)}});
+$('#map').addEventListener('click',e=>{const s=e.target.closest('.st');if(s)go(s.dataset.st)});
+$('#map').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const s=e.target.closest('.st');if(s){e.preventDefault();go(s.dataset.st)}}});
+$('#panel').addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]');if(!a)return;
+  const k=a.dataset.act;
+  if(k==='start')start(1);else if(k==='next')start(G.day+1);else if(k==='retry')start(G?G.day:1);else if(k==='resume')setPause(false);
+});
+document.addEventListener('keydown',e=>{if((e.key==='p'||e.key==='P')&&G&&!G.over)setPause(!G.paused)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&G&&!G.over&&!G.paused)setPause(true)});
+G=null;P={x:400,y:385,mode:'idle',dir:1,cheer:0};
+$('#tch').setAttribute('transform','translate(400 385)');$('#flip').setAttribute('transform','scale(.9 .9)');
+showOv(introHtml());
+</script>
+
+</body></html>
